@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+R:/Project/C++/TVP/1/main.cpp
+iostream
+-
+windows.h
+-
+iomanip
+-
+string
+-
+tchar.h
+-
+thread
+-
+atomic
+-
+
