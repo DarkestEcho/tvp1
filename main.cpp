@@ -5,6 +5,7 @@
 #include <tchar.h>
 #include <thread>
 #include <atomic>
+#include <sstream>
 
 #define DIV 1024
 
@@ -17,27 +18,22 @@ string operator *(const string& str, const int& n){
     }
     return new_str;
 }
+
 /// <summary>
 /// Formatted printing sys info with unsigned value
 /// </summary>
 void PrintU(const string& name, const unsigned& value){
-    string s_value = to_string(value);
-    size_t n = 27 - name.length() + s_value.length();
-    cout << name << setw(n) << "|  " + s_value << endl;
+    cout << setw(24) << left << name << "|  " << value << endl;
 }
+
 /// <summary>
 /// Formatted printing mem info
 /// </summary>
 void PrintM(const string& name, const unsigned long& old_value, const unsigned long& new_value){
-    string s_old_value = to_string(old_value);
-    unsigned long difference = (new_value > old_value)? new_value - old_value : old_value - new_value;
-    size_t n1 = 31 - name.length();
-    size_t n2 = 15 - s_old_value.length();
-    size_t n3 = 15 - to_string(new_value).length();
-    cout << name << setw(n1) << "|  "
-         << s_old_value << setw(n2)<< "|  "
-         << new_value << setw(n3) << "|  "
-         << difference << endl;
+    cout << setw(28) << left << name << "|  "
+         << setw(12) << left << old_value << "|  "
+         << setw(12) << left << new_value << "|  "
+         << ((new_value > old_value)? new_value - old_value : old_value - new_value) << endl;
 }
 
 /// <summary>
@@ -74,10 +70,10 @@ void PrintMemoryStatus(){
     cout << "\nMemory monitor" << endl;
     string line = "-";
     cout << line * 71 << endl;
-    cout << "Description" << setw(20) <<"|  "
-         << "Previous" << setw(7) << "|  "
-         << "Current" << setw(8) << "|  "
-         << "Difference" << endl;
+    cout << setw(28) << left <<  "Description" << "|  "
+         << setw(12) << left << "Previous" << "|  "
+         << setw(12) << left << "Current" << "|  "
+         << setw(12) << left << "Difference" << endl;
     cout << line * 71 << endl;
     MEMORYSTATUSEX statex;
 
@@ -120,33 +116,92 @@ void StartMonitoring(){
     mem_print.join();
 }
 
+void RunApplication(const string& path){
+    ShellExecute(nullptr, "open", path.c_str(),"-L -S",nullptr,SW_SHOW); //запускаем
 
+}
 
 
 int main() {
     statex_old.dwLength = sizeof(statex_old);
-
+    string command_line;
+    cout << "for help enter 'help'"<<endl;
     while (true){
+        cout << ">>";
+        getline(cin, command_line);
         string command;
-        cin >> command;
+
+        stringstream ss(command_line);
+
+        ss >> command;
         if(command == "sysinfo"){
             PrintSysInfo();
-            cout << "hi" << endl;
         }
         else if(command == "monitor"){
             StartMonitoring();
         }
-        else if(command == "region"){
-            void* res_addr = VirtualAlloc(NULL, 100, MEM_RESERVE, PAGE_READWRITE);
-            void* com_addr = VirtualAlloc(res_addr, 100, MEM_COMMIT, PAGE_READWRITE);
+        else if(command == "region_r"){
+            size_t size;
+            ss >> size;
+            void* res_addr = VirtualAlloc(nullptr, size, MEM_RESERVE, PAGE_READWRITE);
+            void* com_addr = VirtualAlloc(res_addr, size, MEM_COMMIT, PAGE_READWRITE);
+            cout << "Reserved: " <<com_addr << endl;
+        }
+        else if(command == "region_r_ip"){
+            void* addr;
+            ss >> addr;
+            size_t size;
+            ss >> size;
+
+            void* res_addr = VirtualAlloc(addr, size, MEM_RESERVE, PAGE_READWRITE);
+            void* com_addr = VirtualAlloc(res_addr, size, MEM_COMMIT, PAGE_READWRITE);
+            cout << "Reserved: " <<com_addr << endl;
+        }
+        else if(command == "region_c_ip"){
+            void* addr;
+            ss >> addr;
+            size_t size;
+            ss >> size;
+
+            void* res_addr = VirtualAlloc(addr, size, MEM_RESERVE, PAGE_READWRITE);
+            void* com_addr = VirtualAlloc(res_addr, size, MEM_COMMIT, PAGE_READWRITE);
             cout << "Reserved and committed: " <<com_addr << endl;
         }
-        else if(command == "region_ip"){
+        else if(command == "region_d_ip"){
             void* addr;
-            cin >> addr;
-            void* res_addr = VirtualAlloc(addr, 100, MEM_RESERVE, PAGE_READWRITE);
-            void* com_addr = VirtualAlloc(res_addr, 100, MEM_COMMIT, PAGE_READWRITE);
-            cout << "Reserved and committed: " <<com_addr << endl;
+            ss >> addr;
+            size_t size;
+            ss >> size;
+
+            bool res = VirtualFree(addr, size, MEM_DECOMMIT);
+            cout << ((res == 1)? "decommitted: " : "didn't decommit: ") << addr << endl;
+        }
+        else if(command == "release_region_ip"){
+            void* addr;
+            ss >> addr;
+
+            bool res = VirtualFree(addr, 0, MEM_RELEASE);
+            cout << ((res == 1)? "released: " : "didn't release: ") << addr << endl;
+        }
+        else if(command == "run"){
+            string path;
+            ss >> path;
+            RunApplication(path);
+        }
+        else if(command == "help"){
+            cout << "List of commands (command - description):" << endl;
+            cout << setw(29) << left << "sysinfo" << "- print system information" << endl;
+            cout << setw(29) << left << "monitor" << "- start monitoring memory's status" << endl;
+            cout << setw(29) << left << "region_r 'size'" << "- reserve region with an unspecified address" << endl;
+            cout << setw(29) << left << "region_r_ip 'address' 'size'" << "- reserve region with an specified address" << endl;
+            cout << setw(29) << left << "region_c_ip 'address' 'size'" << "- commit region with an specified address" << endl;
+            cout << setw(29) << left << "region_d_ip 'address' 'size'" << "- decommit region with an specified address" << endl;
+            cout << setw(29) << left << "release_region_ip 'address'" << "- release region with an specified address" << endl;
+        }
+        else if(command == "echo"){
+            string word;
+            ss >> word;
+            cout << word << endl;
         }
         else if(command == "exit"){
             break;
@@ -155,32 +210,6 @@ int main() {
             cout << "Invalid command" << endl;
         }
     }
-/*
-    void* s = reinterpret_cast<void *>(0x1e1001);
-    void* a = VirtualAlloc(NULL, 100, MEM_RESERVE, PAGE_READWRITE);
-    cout << a << endl;
-    void* b = VirtualAlloc(a, 100, MEM_COMMIT, PAGE_READWRITE);
-    cout << b << endl;*/
-
-
-    //StartMonitoring();
-//    char Arr[4096];
-//    HANDLE hCon = (HANDLE)GetStdHandle(STD_OUTPUT_HANDLE);
-//    int x = 0;
-//    while (true)
-//    {
-//        memset(Arr, ' ', sizeof(Arr));
-//        memcpy(Arr, "Hello", 5);
-//        for (int i = 9; i >= 0; --i)
-//        {
-//            if (x - i >= 0)
-//                Arr[x - i] = '@';
-//        }
-//        x = (x + 1) % sizeof(Arr);
-//        DWORD w;
-//        WriteConsoleOutputCharacter(hCon, Arr, 4096, COORD{ 0, 0 }, &w);
-//        Sleep(10);
-//    }
 
     return 0;
 }
